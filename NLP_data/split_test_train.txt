@@ -1,0 +1,54 @@
+def get_categories(labels_dir):
+    """
+    Get the object categories
+    Args:
+        label_dir: Directory that contains object specific label as .txt files
+    Raises:
+        FileNotFoundError: If the label directory does not exist
+    Returns:
+        Object categories as a list
+    """
+    if not os.path.isdir(labels_dir):
+        raise FileNotFoundError
+    else:
+        categories = []
+        for file in os.listdir(labels_dir):
+            if file.endswith("_train.txt"):
+                categories.append(file.split("_")[0])
+        return categories
+
+class SceneDataset(Dataset):
+  def __init__(self, folder_path, mode="test", transform_img=None, transform_mask=None):
+    super(SceneDataset, self).__init__()
+    self.mode = mode
+    self.transform_img = transform_img
+    self.transform_mask = transform_mask
+    #self.img_files = glob.glob(os.path.join(folder_path,'JPEGImages','*.jpg'))
+    self.mask_files = glob.glob(os.path.join(folder_path,'SegmentationClass','*.png'))
+    #self.img_files.sort()
+    self.img_files = []
+    #self.mask_files = []
+    self.label = []
+    for mask_path in self.mask_files:
+      path = os.path.join(folder_path,'JPEGImages')
+      #path = os.path.join(folder_path, 'SegmentationClass')
+      name = os.path.basename(mask_path).split('.')[0]
+      self.img_files.append(os.path.join(path,name+'.jpg'))
+      #self.img_files.append(os.path.join(path,name+'.png'))
+
+  def __getitem__(self, index):
+    img_path = self.img_files[index]
+    mask_path = self.mask_files[index]
+
+    image = Image.open(img_path).convert('RGB')
+    mask = Image.open(mask_path).convert('L')
+
+    if self.transform_img and self.transform_mask:
+      image = self.transform_img(image)
+      mask = self.transform_mask(mask)
+      return image, mask
+    else:
+      return torch.from_numpy(image).float(), torch.from_numpy(mask).float()
+
+  def __len__(self):
+    return len(self.img_files)
